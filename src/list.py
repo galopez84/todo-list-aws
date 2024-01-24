@@ -17,8 +17,6 @@ def list(event, context):
                 "body": json.dumps(result, cls=decimalencoder.DecimalEncoder)
             }
 
-            # Generar y agregar la política de autorización
-            response.update(generatePolicy('user', 'Allow', event['methodArn']))
             
             return response
 
