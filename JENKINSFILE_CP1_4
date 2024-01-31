@@ -1,0 +1,77 @@
+pipeline {
+    agent any
+    
+    stages {
+        stage('Get Code') {
+            steps {
+                sh '''
+                    echo "Obtenemos el código"
+                    whoami
+                    uname -a
+                    echo ${WORKSPACE}
+                '''
+                git branch: 'develop', url: 'git@github.com:galopez84/todo-list-aws.git'
+                stash name: 'workspace', includes: '**/*'
+            }
+        }
+
+        stage('TEST - STATIC - Flake8 / Bandit') {
+            agent { label 'test' }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'SUCCESS') {
+                    unstash 'workspace'
+                    sh '''
+                        echo "Hacemos una preinstalación de las aplicaciones utilizadas por la etapa"
+                        echo "Ejecutamos flake8 para hacer un análisis de código estático"
+                        flake8 src/* --format=pylint --exit-zero > flake8.out
+                        echo "Ejecutamos bandit para revisar las vulnerabilidades"
+                        bandit --exit-zero -r . -f custom -o bandit.out --msg-template "{abspath}:{line}: [{test_id}] {msg}"
+                        whoami
+                        uname -a
+                    '''
+                    recordIssues tools: [flake8(name: 'Flake8', pattern: 'flake8.out')]
+                    recordIssues tools: [pyLint(name: 'Bandit', pattern: 'bandit.out')]
+                }
+            }
+        }
+
+        stage('Deploy') {
+            agent { label 'deploy' }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'SUCCESS') {
+                    unstash 'workspace'
+                        sh '''
+                            sam validate --region us-east-1 --lint
+                            sam build
+                            sam deploy --config-env staging --config-file samconfig_R1.toml --no-progressbar 
+                            whoami
+                            uname -a
+                            echo ${WORKSPACE}
+                        '''
+                }
+            }
+        }
+
+        stage('TEST Rest') {
+            agent { label 'test' }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'SUCCESS') {
+                    unstash 'workspace'
+                    script {
+                        def BASE_URL = sh(script: "aws cloudformation describe-stacks --stack-name todo-list-aws --query 'Stacks[0].Outputs[?OutputKey==`BaseUrlApi`].OutputValue' --region us-east-1 --output text", returnStdout: true).trim()
+                        echo "BASE_URL: $BASE_URL"
+                        echo 'Initiating Integration Tests'
+                        sh '''
+                            export PYTHONPATH=%WORKSPACE%
+                            pytest --junitxml=result-rest.xml -s test/integration/todoApiTest.py
+                            whoami
+                            uname -a
+                            echo ${WORKSPACE}
+                        '''
+                    }  
+                    junit 'result-rest.xml'
+                }    
+            }
+        }
+    }
+}
