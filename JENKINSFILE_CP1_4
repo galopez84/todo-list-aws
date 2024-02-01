@@ -42,7 +42,7 @@ pipeline {
                         sh '''
                             sam validate --region us-east-1 --lint
                             sam build
-                            sam deploy --config-env staging --config-file samconfig_R1.toml --no-progressbar --force-upload --no-fail-on-empty-changeset
+                            sam deploy --config-env staging --config-file samconfig_R1.toml --no-confirm-changeset --no-progressbar --force-upload --no-fail-on-empty-changeset
                             whoami
                             uname -a
                             echo ${WORKSPACE}
@@ -84,6 +84,7 @@ pipeline {
                     git checkout master
                     git merge develop
                     git push origin master
+                    git checkout develop
                 """, label: "Mergeando a Master"
                 
             }
