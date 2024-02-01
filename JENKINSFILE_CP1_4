@@ -42,7 +42,7 @@ pipeline {
                         sh '''
                             sam validate --region us-east-1 --lint
                             sam build
-                            sam deploy --config-env staging --config-file samconfig_R1.toml --no-progressbar 
+                            sam deploy --config-env staging --config-file samconfig_R1.toml --no-progressbar --force-upload --no-fail-on-empty-changeset
                             whoami
                             uname -a
                             echo ${WORKSPACE}
@@ -73,14 +73,15 @@ pipeline {
                     junit 'result-rest.xml'    
             }
                }
-               
+
         stage('Promote'){
             agent { label 'test' } 
             steps{
                 sh script: """
-                    git checkout develop origin/develop
-                    git commit -m "auto commit"
-                    git checkout master origin/master
+                    git config user.email "jenkins_pipepline@example.com"
+                    git config user.name "Jenkins1"
+                    git checkout develop
+                    git checkout master
                     git merge develop
                     git push origin master
                 """, label: "Mergeando a Master"
