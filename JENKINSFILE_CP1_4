@@ -1,8 +1,8 @@
 pipeline {
     agent any
-    
     stages {
         stage('Get Code') {
+            agent { label 'test' }
             steps {
                 sh '''
                     echo "Obtenemos el código"
@@ -35,7 +35,7 @@ pipeline {
         }
 
         stage('Deploy') {
-            agent { label 'deploy' }
+            agent { label 'test' }
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'SUCCESS') {
                     unstash 'workspace'
@@ -72,6 +72,59 @@ pipeline {
                     } 
                     junit 'result-rest.xml'    
             }
+               }
+               
+        stage('Promote'){
+            agent { label 'test' } 
+            steps{
+                sh script: """
+                    git checkout develop origin/develop
+                    git commit -m "auto commit"
+                    git checkout master origin/master
+                    git merge develop
+                    git push origin master
+                """, label: "Mergeando a Master"
+                
+            }
         }
+		
+		        stage('Clean WSpace in all Nodes') {
+            parallel {
+                stage('Clean WSpace test node') {
+                    agent { label 'test' }
+                    steps {
+                        sh '''
+                            whoami
+                            uname -a
+                            echo ${WORKSPACE}
+                        ''' 
+                        script {
+                            // Limpieza después de realizar las operaciones necesarias
+                            cleanWs()
+                        }
+                    }
+                }
+
+                stage('Clean WSpace deploy node') {
+                    agent { label 'deploy' }
+                    steps {
+                        sh '''
+                            whoami
+                            uname -a
+                            echo ${WORKSPACE}
+                        ''' 
+                        script {
+                            // Limpieza después de realizar las operaciones necesarias
+                            cleanWs()
+                        }
+                    }
+                }
+
+            }
+        }
+
+
+
     }
+
 }
