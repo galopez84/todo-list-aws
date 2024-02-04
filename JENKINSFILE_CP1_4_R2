@@ -22,7 +22,7 @@ pipeline {
                     unstash 'workspace'
                         sh '''
                             sam build
-                            sam deploy --config-env production --config-file samconfig_R2.toml --no-confirm-changeset --no-progressbar --force-upload --no-fail-on-empty-changeset
+                            sam deploy --config-env production --stack-name todo-list-aws-production --region us-east-1  --config-file samconfig_R2.toml --no-confirm-changeset --no-progressbar --force-upload --no-fail-on-empty-changeset --resolve-s3
                             whoami
                             uname -a
                             echo ${WORKSPACE}
@@ -43,7 +43,7 @@ pipeline {
                         env.BASE_URL = BASE_URL
                     sh '''
                     export PYTHONPATH=%WORKSPACE%
-                    pytest --junitxml=result-rest.xml -s test/integration/todoApiTest.py
+                    pytest --junitxml=result-rest.xml -s test/integration/todoApiTestProduction.py
                     whoami
                     uname -a
                     echo ${WORKSPACE}
