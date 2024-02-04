@@ -43,7 +43,7 @@ pipeline {
                         env.BASE_URL = BASE_URL
                     sh '''
                     export PYTHONPATH=%WORKSPACE%
-                    pytest --junitxml=result-rest.xml -s test/integration/todoApiTest.py
+                    pytest --junitxml=result-rest.xml -s test/integration/todoApiTestProduction.py
                     whoami
                     uname -a
                     echo ${WORKSPACE}
