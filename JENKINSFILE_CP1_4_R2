@@ -10,7 +10,7 @@ pipeline {
                     uname -a
                     echo ${WORKSPACE}
                 '''
-                git branch: 'master', url: 'git@github.com:galopez84/todo-list-aws.git'
+                git branch: 'develop', url: 'git@github.com:galopez84/todo-list-aws.git'
                 stash name: 'workspace', includes: '**/*'
             }
         }
@@ -22,7 +22,7 @@ pipeline {
                     unstash 'workspace'
                         sh '''
                             sam build
-                            sam deploy --config-env production --stack-name todo-list-aws-production --region us-east-1  --config-file samconfig_R2.toml --no-confirm-changeset --no-progressbar --force-upload --no-fail-on-empty-changeset --resolve-s3
+                            sam deploy template.yaml --config-env production --stack-name todo-list-aws-production --region us-east-1  --config-file samconfig_R2.toml --no-confirm-changeset --no-progressbar --force-upload --no-fail-on-empty-changeset --resolve-s3
                             whoami
                             uname -a
                             echo ${WORKSPACE}
