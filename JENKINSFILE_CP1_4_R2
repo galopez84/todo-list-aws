@@ -10,7 +10,7 @@ pipeline {
                     uname -a
                     echo ${WORKSPACE}
                 '''
-                git branch: 'develop', url: 'git@github.com:galopez84/todo-list-aws.git'
+                git branch: 'master', url: 'git@github.com:galopez84/todo-list-aws.git'
                 stash name: 'workspace', includes: '**/*'
             }
         }
