@@ -7,8 +7,8 @@ import json
 
 import pytest
 
-#BASE_URL = os.environ.get("BASE_URL")
-BASE_URL = "https://ssfjuod8z4.execute-api.us-east-1.amazonaws.com/Prod"
+BASE_URL = os.environ.get("BASE_URL")
+#BASE_URL = "https://ssfjuod8z4.execute-api.us-east-1.amazonaws.com/Prod"
 DEFAULT_TIMEOUT = 2  # in secs
 
 
@@ -45,5 +45,5 @@ class TestApi(unittest.TestCase):
          self.assertEqual(
          response.status_code, 404, "Error en la petición API a {url}"
          )
-         print('End - integration test Delete TODO')
+
     
