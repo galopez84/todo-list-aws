@@ -54,6 +54,40 @@ pipeline {
             }
                }
 
+            stage('Clean WSpace in all Nodes') {
+            parallel {
+                stage('Clean WSpace test node') {
+                    agent { label 'test' }
+                    steps {
+                        sh '''
+                            whoami
+                            uname -a
+                            echo ${WORKSPACE}
+                        ''' 
+                        script {
+                            // Limpieza después de realizar las operaciones necesarias
+                            cleanWs()
+                        }
+                    }
+                }
+
+                stage('Clean WSpace deploy node') {
+                    agent { label 'deploy' }
+                    steps {
+                        sh '''
+                            whoami
+                            uname -a
+                            echo ${WORKSPACE}
+                        ''' 
+                        script {
+                            // Limpieza después de realizar las operaciones necesarias
+                            cleanWs()
+                        }
+                    }
+                }
+
+            }
+        }
 
     }
 
