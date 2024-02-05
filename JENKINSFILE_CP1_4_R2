@@ -22,7 +22,7 @@ pipeline {
                     unstash 'workspace'
                         sh '''
                             sam build
-                            sam deploy --config-env production --stack-name todo-list-aws-production --region us-east-1  --config-file samconfig_R2.toml --no-confirm-changeset --no-progressbar --force-upload --no-fail-on-empty-changeset --resolve-s3
+                            sam deploy template.yaml --config-env production --stack-name todo-list-aws-production --region us-east-1  --config-file samconfig_R2.toml --no-confirm-changeset --no-progressbar --force-upload --no-fail-on-empty-changeset --resolve-s3
                             whoami
                             uname -a
                             echo ${WORKSPACE}
@@ -54,6 +54,40 @@ pipeline {
             }
                }
 
+            stage('Clean WSpace in all Nodes') {
+            parallel {
+                stage('Clean WSpace test node') {
+                    agent { label 'test' }
+                    steps {
+                        sh '''
+                            whoami
+                            uname -a
+                            echo ${WORKSPACE}
+                        ''' 
+                        script {
+                            // Limpieza después de realizar las operaciones necesarias
+                            cleanWs()
+                        }
+                    }
+                }
+
+                stage('Clean WSpace deploy node') {
+                    agent { label 'deploy' }
+                    steps {
+                        sh '''
+                            whoami
+                            uname -a
+                            echo ${WORKSPACE}
+                        ''' 
+                        script {
+                            // Limpieza después de realizar las operaciones necesarias
+                            cleanWs()
+                        }
+                    }
+                }
+
+            }
+        }
 
     }
 
