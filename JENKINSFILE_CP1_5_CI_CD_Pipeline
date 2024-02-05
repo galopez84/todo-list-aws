@@ -34,8 +34,6 @@ pipeline {
             }
         }
 
-
-
         stage('Deploy') {
             agent { label 'git' }
             steps {
@@ -44,7 +42,7 @@ pipeline {
                         sh '''
                             sam validate --region us-east-1 --lint
                             sam build
-                            sam deploy --config-env staging --config-file samconfig_R1.toml --stack-name todo-list-aws --region us-east-1 --no-confirm-changeset --no-progressbar --force-upload --no-fail-on-empty-changeset --resolve-s3
+                            sam deploy --config-env staging --config-file samconfig_R1.toml --stack-name todo-list-aws-staging --region us-east-1 --no-confirm-changeset --no-progressbar --force-upload --no-fail-on-empty-changeset --resolve-s3
                             whoami
                             uname -a
                         '''
@@ -59,7 +57,7 @@ pipeline {
                     unstash 'workspace'
                     echo 'Initiating Integration Tests'
                     script {
-                        def BASE_URL = sh(script: "aws cloudformation describe-stacks --stack-name todo-list-aws --query 'Stacks[0].Outputs[?OutputKey==`BaseUrlApi`].OutputValue' --region us-east-1 --output text", returnStdout: true).trim()
+                        def BASE_URL = sh(script: "aws cloudformation describe-stacks --stack-name todo-list-aws-staging --query 'Stacks[0].Outputs[?OutputKey==`BaseUrlApi`].OutputValue' --region us-east-1 --output text", returnStdout: true).trim()
                         echo "BASE_URL: $BASE_URL"
                         env.BASE_URL = BASE_URL
                     sh '''
@@ -73,26 +71,6 @@ pipeline {
                     junit 'result-rest.xml'    
             }
                }
-
-        stage('Promote'){
-            agent { label 'git' } 
-            steps{
-                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                unstash 'workspace'
-                sh script: """
-                    git config user.email "jenkins_pipepline@example.com"
-                    git config user.name "Jenkins1"
-                    git checkout develop
-                    git checkout master
-                    git merge develop
-                    git push origin master
-                    git checkout develop
-                    whoami
-                    uname -a
-                """, label: "Mergeando a Master"
-                }
-            }
-        }
 		
 		        stage('Clean WSpace in all Nodes') {
             parallel {
