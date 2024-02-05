@@ -1,0 +1,63 @@
+pipeline {
+    agent any
+    stages {
+        stage('Get Code') {
+            agent { label 'test' }
+            steps {
+                git branch: 'master', url: 'git@github.com:galopez84/todo-list-aws.git'
+                sh '''
+                    echo "Obtenemos el código"
+                    whoami
+                    uname -a
+                    echo ${WORKSPACE}
+                    echo "Nos bajamos el fichero de configuracion del repositorio config"
+                    wget https://raw.githubusercontent.com/galopez84/todo-list-aws-config/production/samconfig.toml -O samconfig.toml
+                '''
+                stash name: 'workspace', includes: '**/*'
+            }
+        }
+
+        stage('Deploy') {
+            agent { label 'test' }
+            steps {
+                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                    unstash 'workspace'
+                        sh '''
+                            sam build
+                            sam deploy template.yaml --config-file samconfig.toml --config-env production --no-confirm-changeset --no-progressbar --force-upload --no-fail-on-empty-changeset
+                            whoami
+                            uname -a
+                            echo ${WORKSPACE}
+                        '''
+                }
+            }
+        }
+
+        stage('TEST Rest') {
+            agent { label 'test' }
+            steps {
+                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                    unstash 'workspace'
+                        echo 'Initiating Integration Tests'
+                        script {
+                        def BASE_URL = sh(script: "aws cloudformation describe-stacks --stack-name todo-list-aws-production --query 'Stacks[0].Outputs[?OutputKey==`BaseUrlApi`].OutputValue' --region us-east-1 --output text", returnStdout: true).trim()
+                        echo "BASE_URL: $BASE_URL"
+                        env.BASE_URL = BASE_URL
+                    sh '''
+                    export PYTHONPATH=%WORKSPACE%
+                    pytest --junitxml=result-rest.xml -s test/integration/todoApiTestProduction.py
+                    whoami
+                    uname -a
+                    echo ${WORKSPACE}
+                    '''
+            }
+                    } 
+                    junit 'result-rest.xml'    
+            }
+               }
+
+
+
+    }
+
+}
