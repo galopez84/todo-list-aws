@@ -88,7 +88,7 @@ pipeline {
                     unstash 'workspace'
                         sh '''
                             sam build
-                            sam deploy template.yaml --config-file samconfig.toml --config-env production --no-confirm-changeset --no-progressbar --force-upload --no-fail-on-empty-changeset
+                            sam deploy template.yaml --config-file samconfig_R2.toml --config-env production --no-confirm-changeset --no-progressbar --force-upload --no-fail-on-empty-changeset
                             whoami
                             uname -a
                             echo ${WORKSPACE}
@@ -170,7 +170,7 @@ pipeline {
                 }
             }
         }
-        
+
 
 		        stage('Clean WSpace in all Nodes') {
             parallel {
