@@ -140,9 +140,6 @@ pipeline {
                     git config user.email "jenkins_pipepline@example.com"
                     git config user.name "Jenkins1"
                     git checkout develop
-                    git add .
-                    git commit -m 'Jenkins Auto Commit' 
-                    git push origin develop
                     git checkout master
                     git merge develop
                     git push origin master
