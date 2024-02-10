@@ -121,7 +121,7 @@ pipeline {
                     junit 'result-rest.xml'    
             }
                }
-               
+
 		
             stage('TEST Rest - PRODUCTION') {
             agent { label 'git' }
@@ -148,6 +148,7 @@ pipeline {
                     junit 'result-rest.xml'    
             }
                }
+
 
         stage('Promote'){
             agent { label 'git' } 
