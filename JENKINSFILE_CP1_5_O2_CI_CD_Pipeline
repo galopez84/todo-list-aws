@@ -121,6 +121,7 @@ pipeline {
                     junit 'result-rest.xml'    
             }
                }
+               
 		
             stage('TEST Rest - PRODUCTION') {
             agent { label 'git' }
