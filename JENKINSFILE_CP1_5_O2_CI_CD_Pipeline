@@ -148,7 +148,26 @@ pipeline {
                 }
             }
         }
-    
+
+		        stage('Clean WSpace in all Nodes') {
+            parallel {
+                stage('Clean WSpace test node') {
+                    agent { label 'git' }
+                    steps {
+                        sh '''
+                            whoami
+                            uname -a
+                            echo ${WORKSPACE}
+                        ''' 
+                        script {
+                            // Limpieza después de realizar las operaciones necesarias
+                            cleanWs()
+                        }
+                    }
+                }
+
+            }
+        }
 
     }
 
