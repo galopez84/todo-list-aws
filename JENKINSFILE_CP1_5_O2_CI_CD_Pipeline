@@ -1,8 +1,11 @@
 pipeline {
     agent any
     stages {
-        stage('Get Code') {
+        stage('Get Code Develop') {
             agent { label 'git' }
+            when {
+                branch 'develop'
+            }
             steps {
                 sh '''
                     echo "Obtenemos el código"
@@ -14,6 +17,25 @@ pipeline {
                 stash name: 'workspace', includes: '**/*'
             }
         }
+
+        stage('Get Code Master') {
+            agent { label 'git' }
+            when {
+                branch 'master'
+            }
+            steps {
+                sh '''
+                    echo "Obtenemos el código"
+                    whoami
+                    uname -a
+                    echo ${WORKSPACE}
+                '''
+                git branch: 'master', url: 'git@github.com:galopez84/todo-list-aws.git'
+                stash name: 'workspace', includes: '**/*'
+            }
+        }
+
+
 
         stage('TEST - STATIC - Flake8 / Bandit') {
             agent { label 'git' }
@@ -74,8 +96,6 @@ pipeline {
                 }
             }
         }
-
-
 
         stage('TEST Rest - STAGING') {
             agent { label 'git' }
@@ -150,7 +170,26 @@ pipeline {
                 }
             }
         }
-    
+
+		        stage('Clean WSpace in all Nodes') {
+            parallel {
+                stage('Clean WSpace test node') {
+                    agent { label 'git' }
+                    steps {
+                        sh '''
+                            whoami
+                            uname -a
+                            echo ${WORKSPACE}
+                        ''' 
+                        script {
+                            // Limpieza después de realizar las operaciones necesarias
+                            cleanWs()
+                        }
+                    }
+                }
+
+            }
+        }
 
     }
 
