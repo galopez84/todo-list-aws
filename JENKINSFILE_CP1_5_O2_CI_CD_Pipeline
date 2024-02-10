@@ -17,6 +17,9 @@ pipeline {
 
         stage('TEST - STATIC - Flake8 / Bandit') {
             agent { label 'git' }
+            when {
+                branch 'develop'
+            }
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     unstash 'workspace'
@@ -34,8 +37,11 @@ pipeline {
             }
         }
 
-        stage('Deploy') {
+        stage('Deploy to Staging') {
             agent { label 'git' }
+            when {
+                branch 'develop'
+            }
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     unstash 'workspace'
@@ -50,8 +56,32 @@ pipeline {
             }
         }
 
-        stage('TEST Rest') {
+        stage('Deploy to Production') {
             agent { label 'git' }
+            when {
+                branch 'master'
+            }
+            steps {
+                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                    unstash 'workspace'
+                        sh '''
+                            sam build
+                            sam deploy template.yaml --config-file samconfig.toml --config-env production --no-confirm-changeset --no-progressbar --force-upload --no-fail-on-empty-changeset
+                            whoami
+                            uname -a
+                            echo ${WORKSPACE}
+                        '''
+                }
+            }
+        }
+
+
+
+        stage('TEST Rest - STAGING') {
+            agent { label 'git' }
+            when {
+                branch 'develop'
+            }
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     unstash 'workspace'
@@ -72,7 +102,54 @@ pipeline {
             }
                }
 		
-             
+            stage('TEST Rest - PRODUCTION') {
+            agent { label 'git' }
+            when {
+                branch 'master'
+            }
+            steps {
+                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                    unstash 'workspace'
+                        echo 'Initiating Integration Tests'
+                        script {
+                        def BASE_URL = sh(script: "aws cloudformation describe-stacks --stack-name todo-list-aws-production --query 'Stacks[0].Outputs[?OutputKey==`BaseUrlApi`].OutputValue' --region us-east-1 --output text", returnStdout: true).trim()
+                        echo "BASE_URL: $BASE_URL"
+                        env.BASE_URL = BASE_URL
+                    sh '''
+                    export PYTHONPATH=%WORKSPACE%
+                    pytest --junitxml=result-rest.xml -s test/integration/todoApiTestProduction.py
+                    whoami
+                    uname -a
+                    echo ${WORKSPACE}
+                    '''
+            }
+                    } 
+                    junit 'result-rest.xml'    
+            }
+               }
+
+        stage('Promote'){
+            agent { label 'git' } 
+            when {
+                branch 'develop'
+            }
+            steps{
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                unstash 'workspace'
+                sh script: """
+                    git config user.email "jenkins_pipepline@example.com"
+                    git config user.name "Jenkins1"
+                    git checkout develop
+                    git checkout master
+                    git merge develop
+                    git push origin master
+                    git checkout develop
+                    whoami
+                    uname -a
+                """, label: "Mergeando a Master"
+                }
+            }
+        }
     
 
     }

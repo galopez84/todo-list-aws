@@ -1,0 +1,151 @@
+pipeline {
+    agent any
+    stages {
+        stage('Get Code') {
+            agent { label 'git' }
+            steps {
+                git branch: 'develop', url: 'git@github.com:galopez84/todo-list-aws.git'
+                
+                sh '''
+                    echo "Obtenemos el código"
+                    whoami
+                    uname -a
+                    echo ${WORKSPACE}
+                    wget https://raw.githubusercontent.com/galopez84/todo-list-aws-config/staging/samconfig.toml -O samconfig.toml
+                '''
+                stash name: 'workspace', includes: '**/*'
+            }
+        }
+
+        stage('TEST - STATIC - Flake8 / Bandit') {
+            agent { label 'static' }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    unstash 'workspace'
+                    sh '''
+                        echo "Ejecutamos flake8 para hacer un análisis de código estático"
+                        flake8 src/* --format=pylint --exit-zero > flake8.out
+                        echo "Ejecutamos bandit para revisar las vulnerabilidades"
+                        bandit --exit-zero -r . -f custom -o bandit.out --msg-template "{abspath}:{line}: [{test_id}] {msg}"
+                        whoami
+                        uname -a
+                    '''
+                    recordIssues tools: [flake8(name: 'Flake8', pattern: 'flake8.out')]
+                    recordIssues tools: [pyLint(name: 'Bandit', pattern: 'bandit.out')]
+                }
+            }
+        }
+
+        stage('Deploy') {
+            agent { label 'deploy' }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    unstash 'workspace'
+                        sh '''
+                            sam validate --region us-east-1 --lint
+                            sam build
+                            sam deploy --config-file samconfig.toml --config-env staging --no-confirm-changeset --no-progressbar --force-upload --no-fail-on-empty-changeset
+                            whoami
+                            uname -a
+                        '''
+                }
+            }
+        }
+
+        stage('TEST Rest') {
+            agent { label 'rest' }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    unstash 'workspace'
+                    echo 'Initiating Integration Tests'
+                    script {
+                        def BASE_URL = sh(script: "aws cloudformation describe-stacks --stack-name todo-list-aws-staging --query 'Stacks[0].Outputs[?OutputKey==`BaseUrlApi`].OutputValue' --region us-east-1 --output text", returnStdout: true).trim()
+                        echo "BASE_URL: $BASE_URL"
+                        env.BASE_URL = BASE_URL
+                    sh '''
+                    export PYTHONPATH=%WORKSPACE%
+                    pytest --junitxml=result-rest.xml -s test/integration/todoApiTest.py
+                    whoami
+                    uname -a
+                    '''
+                        }
+                    } 
+                    junit 'result-rest.xml'    
+            }
+               }
+
+        stage('Promote'){
+            agent { label 'git' } 
+            steps{
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                unstash 'workspace'
+                sh script: """
+                    git config user.email "jenkins_pipepline@example.com"
+                    git config user.name "Jenkins1" 
+                    git checkout develop
+                    git checkout master
+                    git merge develop
+                    git push origin master
+                    git checkout develop
+                    whoami
+                    uname -a
+                """, label: "Mergeando a Master"
+                }
+            }
+        }
+		
+		        stage('Clean WSpace in all Nodes') {
+            parallel {
+                stage('Clean WSpace test node') {
+                    agent { label 'git' }
+                    steps {
+                        sh '''
+                            whoami
+                            uname -a
+                            echo ${WORKSPACE}
+                        ''' 
+                        script {
+                            // Limpieza después de realizar las operaciones necesarias
+                            cleanWs()
+                        }
+                    }
+                }
+
+                stage('Clean WSpace deploy node') {
+                    agent { label 'deploy' }
+                    steps {
+                        sh '''
+                            whoami
+                            uname -a
+                            echo ${WORKSPACE}
+                        ''' 
+                        script {
+                            // Limpieza después de realizar las operaciones necesarias
+                            cleanWs()
+                        }
+                    }
+                }
+
+                    stage('Clean WSpace rest node') {
+                    agent { label 'rest' }
+                    steps {
+                        sh '''
+                            whoami
+                            uname -a
+                            echo ${WORKSPACE}
+                        ''' 
+                        script {
+                            // Limpieza después de realizar las operaciones necesarias
+                            cleanWs()
+                        }
+                    }
+                }
+
+            }
+        }
+                
+    
+
+    }
+
+}

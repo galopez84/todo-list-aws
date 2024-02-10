@@ -16,7 +16,7 @@ pipeline {
         }
 
         stage('TEST - STATIC - Flake8 / Bandit') {
-            agent { label 'git' }
+            agent { label 'static' }
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     unstash 'workspace'
@@ -35,7 +35,7 @@ pipeline {
         }
 
         stage('Deploy') {
-            agent { label 'git' }
+            agent { label 'deploy' }
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     unstash 'workspace'
@@ -51,7 +51,7 @@ pipeline {
         }
 
         stage('TEST Rest') {
-            agent { label 'git' }
+            agent { label 'rest' }
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     unstash 'workspace'
@@ -71,8 +71,77 @@ pipeline {
                     junit 'result-rest.xml'    
             }
                }
+
+        stage('Promote'){
+            agent { label 'git' } 
+            steps{
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                unstash 'workspace'
+                sh script: """
+                    git config user.email "jenkins_pipepline@example.com"
+                    git config user.name "Jenkins1"
+                    git checkout develop
+                    git checkout master
+                    git merge develop
+                    git push origin master
+                    git checkout develop
+                    whoami
+                    uname -a
+                """, label: "Mergeando a Master"
+                }
+            }
+        }
 		
-             
+		        stage('Clean WSpace in all Nodes') {
+            parallel {
+                stage('Clean WSpace test node') {
+                    agent { label 'git' }
+                    steps {
+                        sh '''
+                            whoami
+                            uname -a
+                            echo ${WORKSPACE}
+                        ''' 
+                        script {
+                            // Limpieza después de realizar las operaciones necesarias
+                            cleanWs()
+                        }
+                    }
+                }
+
+                stage('Clean WSpace deploy node') {
+                    agent { label 'deploy' }
+                    steps {
+                        sh '''
+                            whoami
+                            uname -a
+                            echo ${WORKSPACE}
+                        ''' 
+                        script {
+                            // Limpieza después de realizar las operaciones necesarias
+                            cleanWs()
+                        }
+                    }
+                }
+
+                    stage('Clean WSpace rest node') {
+                    agent { label 'rest' }
+                    steps {
+                        sh '''
+                            whoami
+                            uname -a
+                            echo ${WORKSPACE}
+                        ''' 
+                        script {
+                            // Limpieza después de realizar las operaciones necesarias
+                            cleanWs()
+                        }
+                    }
+                }
+
+            }
+        }
+                
     
 
     }
