@@ -35,8 +35,6 @@ pipeline {
             }
         }
 
-
-
         stage('TEST - STATIC - Flake8 / Bandit') {
             agent { label 'git' }
             when {
